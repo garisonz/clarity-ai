@@ -10,7 +10,7 @@ An intelligent CLI code review tool that performs multi-dimensional analysis (qu
 
 - **Static Analysis Engine** — AST-based code inspection across three dimensions: quality, security, and performance
 - **AI-Powered Review** — Contextual code review via the Anthropic Claude API with structured feedback and graceful degradation
-- **Git Integration** — Review staged changes, diffs against branches, or specific commits
+- **Git Integration** — Review staged changes or specific commits
 - **Plugin Architecture** — Modular analyzer system that's easy to extend with custom rules
 - **Multiple Output Formats** — Rich terminal output, JSON (for CI pipelines), and Markdown (for PR comments)
 - **Configurable** — TOML-based configuration with sensible defaults and per-project overrides
@@ -225,18 +225,6 @@ pytest
 clarity-ai review src/
 ```
 
-## Roadmap
-
-- [ ] JavaScript/TypeScript analyzer support
-- [ ] Pre-commit hook integration
-- [ ] VS Code extension
-- [ ] Custom rule definitions via TOML
-- [ ] Review history and trend tracking
-- [ ] Multi-file context awareness (cross-module analysis)
-
-## License
-
-MIT
 
 ---
 
