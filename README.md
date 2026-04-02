@@ -1,2 +1,243 @@
-# clarity-ai
-An intelligent CLI code review tool that combines static analysis with AI-powered insights to surface quality, security, and performance issues in your codebase.
+# ClarityAI
+
+**See your code clearly.** ClarityAI catches what linters miss — combining fast static analysis with AI that understands your intent.
+
+An intelligent CLI code review tool that performs multi-dimensional analysis (quality, security, performance) using AST parsing and pattern matching, then layers on contextual AI review via Claude for deeper, human-like feedback.
+
+---
+
+## Features
+
+- **Static Analysis Engine** — AST-based code inspection across three dimensions: quality, security, and performance
+- **AI-Powered Review** — Contextual code review via the Anthropic Claude API with structured feedback and graceful degradation
+- **Git Integration** — Review staged changes, diffs against branches, or specific commits
+- **Plugin Architecture** — Modular analyzer system that's easy to extend with custom rules
+- **Multiple Output Formats** — Rich terminal output, JSON (for CI pipelines), and Markdown (for PR comments)
+- **Configurable** — TOML-based configuration with sensible defaults and per-project overrides
+
+## Quick Start
+
+### Installation
+
+```bash
+# Clone the repo
+git clone https://github.com/yourusername/clarity-ai.git
+cd clarity-ai
+
+# Install in development mode
+pip install -e .
+```
+
+### Set up your API key (optional, for AI review)
+
+```bash
+export ANTHROPIC_API_KEY="your-api-key-here"
+```
+
+### Run a review
+
+```bash
+# Review specific files
+clarity-ai review main.py utils.py
+
+# Review staged git changes
+clarity-ai review --git-staged
+
+# Review diff against main branch
+clarity-ai review --git-diff main
+
+# Output as JSON for CI
+clarity-ai review src/ --format json
+
+# Disable AI review (static analysis only)
+clarity-ai review src/ --no-ai
+```
+
+## How It Works
+
+ClarityAI runs in two passes:
+
+**Pass 1 — Static Analysis** parses your Python files into ASTs and runs each enabled analyzer:
+
+| Analyzer | What it catches |
+|---|---|
+| **Quality** | Long functions, deep nesting, missing docstrings, unused imports, bare excepts |
+| **Security** | Hardcoded secrets, SQL injection patterns, `eval()`/`exec()` usage, `shell=True` in subprocess |
+| **Performance** | List comprehension opportunities, string concat in loops, repeated attribute access |
+
+**Pass 2 — AI Review** sends the source code, git diff, and static analysis results to Claude, which returns structured feedback on architectural concerns, logic errors, and contextual improvements that rule-based tools can't catch.
+
+If the API key is missing or the request fails, ClarityAI degrades gracefully — you still get the full static analysis.
+
+## Configuration
+
+Create a `clarity-ai.toml` in your project root:
+
+```toml
+[general]
+output_format = "rich"        # rich | json | markdown
+severity_threshold = "low"    # low | medium | high | critical
+
+[ai]
+enabled = true
+model = "claude-sonnet-4-20250514"
+custom_instructions = "Focus on Python best practices and type safety"
+
+[analyzers]
+quality = true
+security = true
+performance = true
+
+[analyzers.quality]
+max_function_length = 50
+max_complexity = 10
+
+[analyzers.security]
+check_sql_injection = true
+check_hardcoded_secrets = true
+```
+
+Configuration is resolved in order: **defaults → project `clarity-ai.toml` → CLI flags**.
+
+## Output Examples
+
+### Rich (Terminal)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ ClarityAI Review — 3 files, 12 issues found             │
+└─────────────────────────────────────────────────────────┘
+
+ src/auth.py
+
+  🔴 HIGH  SEC-001  Hardcoded secret detected (line 14)
+     → Move to environment variable or secrets manager
+
+  🟡 MED   QUAL-003 Function 'process_login' is 87 lines (line 22)
+     → Extract validation logic into a helper function
+
+  🔵 LOW   PERF-002 String concatenation in loop (line 45)
+     → Use ''.join() or a list with .append()
+
+  🟣 MED   AI-001   Auth token is never invalidated on logout (line 58)
+     → Add token revocation to the logout handler
+```
+
+### JSON
+
+```json
+{
+  "summary": {
+    "files_reviewed": 3,
+    "total_issues": 12,
+    "by_severity": { "critical": 0, "high": 2, "medium": 5, "low": 5 }
+  },
+  "issues": [
+    {
+      "file": "src/auth.py",
+      "line": 14,
+      "severity": "high",
+      "category": "security",
+      "rule_id": "SEC-001",
+      "message": "Hardcoded secret detected",
+      "suggestion": "Move to environment variable or secrets manager"
+    }
+  ]
+}
+```
+
+## Project Structure
+
+```
+clarity-ai/
+├── pyproject.toml
+├── clarity-ai.toml              # Default configuration
+├── src/
+│   └── clarity_ai/
+│       ├── __init__.py
+│       ├── cli.py                # CLI entry point
+│       ├── config.py             # TOML config loader
+│       ├── git_utils.py          # Git diff/staging integration
+│       ├── analyzers/
+│       │   ├── __init__.py       # Analyzer registry
+│       │   ├── base.py           # Abstract base class + Issue dataclass
+│       │   ├── quality.py        # Code quality checks (AST)
+│       │   ├── security.py       # Security vulnerability checks (AST + regex)
+│       │   └── performance.py    # Performance anti-pattern checks (AST)
+│       ├── ai_reviewer.py        # Anthropic Claude API integration
+│       └── output/
+│           ├── __init__.py       # Formatter factory
+│           ├── rich_output.py    # Terminal-formatted output
+│           ├── json_output.py    # JSON report
+│           └── markdown_output.py # Markdown report
+└── tests/
+    ├── test_analyzers/
+    ├── test_ai_reviewer.py
+    ├── test_config.py
+    └── fixtures/                 # Sample Python files with known issues
+```
+
+## CI Integration
+
+ClarityAI exits with code `1` if any issues meet or exceed the severity threshold, making it easy to gate PRs:
+
+```yaml
+# .github/workflows/code-review.yml
+name: Code Review
+on: [pull_request]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install .
+      - name: Run ClarityAI
+        run: clarity-ai review src/ --format json --severity medium
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+## Tech Stack
+
+- **Python 3.11+** — Core language
+- **ast** — Abstract Syntax Tree parsing for static analysis
+- **Anthropic SDK** — Claude API integration for AI review
+- **Rich** — Terminal formatting and colored output
+- **GitPython** — Git diff and staging integration
+- **tomllib** — TOML configuration parsing
+
+## Development
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run ClarityAI on itself
+clarity-ai review src/
+```
+
+## Roadmap
+
+- [ ] JavaScript/TypeScript analyzer support
+- [ ] Pre-commit hook integration
+- [ ] VS Code extension
+- [ ] Custom rule definitions via TOML
+- [ ] Review history and trend tracking
+- [ ] Multi-file context awareness (cross-module analysis)
+
+## License
+
+MIT
+
+---
+
+Built by [Garison Zagorski](https://garisonzagorski.com)
