@@ -21,7 +21,7 @@ An intelligent CLI code review tool that performs multi-dimensional analysis (qu
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/clarity-ai.git
+git clone https://github.com/garisonz/clarity-ai.git
 cd clarity-ai
 
 # Install in development mode
