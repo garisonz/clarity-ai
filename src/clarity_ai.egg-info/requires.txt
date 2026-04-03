@@ -1,7 +1,7 @@
 typer
 rich
 gitpython
-anthropic
+ollama
 
 [dev]
 pytest
