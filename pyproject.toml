@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clarity-ai"
+version = "0.1.0"
+description = "An intelligent CLI code review tool combining static analysis with AI-powered insights"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Garison Zagorski" }]
+
+dependencies = [
+    "typer",
+    "rich",
+    "gitpython",
+    "anthropic",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov"]
+
+[project.scripts]
+clarity-ai = "clarity_ai.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]

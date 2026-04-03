@@ -1,0 +1,2 @@
+[console_scripts]
+clarity-ai = clarity_ai.cli:app
